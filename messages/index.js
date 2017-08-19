@@ -96,7 +96,7 @@ bot.dialog('/hello', [
     function (session, message) {
         var name = message.user ? message.user.name : null;
         var reply = new builder.Message()
-            .text("Hello %s", name || 'there');
+            .text("Hello %s", name);
         session.endDialog(reply);
     }
 ]).triggerAction({
@@ -134,7 +134,8 @@ bot.dialog('/search', [
         builder.Prompts.text(session, "Hey, What are you looking for: ");
     },
     function (session, results) {
-        var SEARCH = results.response;
+        var ORG_SEARCH = results.response;
+		var SEARCH = ORG_SEARCH.replace("@Chip-chan","");
         customsearch.cse.list({
             cx: CX,
             q: SEARCH,
