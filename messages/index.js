@@ -28,7 +28,7 @@ if (useEmulator) {
 
 // //Create bot
 var bot = new builder.UniversalBot(connector);
-
+bot.localePath(path.join(__dirname, './locale'));
 //=========================================================
 // Activity Events
 //=========================================================
@@ -43,18 +43,6 @@ bot.on('conversationUpdate', function (message) {
                     var reply = new builder.Message()
                         .address(message.address)
                         .text("Hello everyone! I'm Friday. You need help ?");
-                    bot.send(reply);
-                }
-            });
-        }
-
-        // Send a goodbye message when bot is removed
-        if (message.membersRemoved) {
-            message.membersRemoved.forEach(function (identity) {
-                if (identity.id === message.address.bot.id) {
-                    var reply = new builder.Message()
-                        .address(message.address)
-                        .text("Goodbye. See all later");
                     bot.send(reply);
                 }
             });
