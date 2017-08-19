@@ -137,29 +137,49 @@ bot.dialog('/', [
 ]).triggerAction({
     matches: /^about you|introduce|show/i,
 });
-bot.dialog('/search',[
+bot.dialog('/search', [
     function (session) {
         // session.send("Our Bot Builder SDK has a rich set of built-in prompts that simplify asking the user a series of questions. This demo will walk you through using each prompt. Just follow the prompts and you can quit at any time by saying 'cancel'.");
         // builder.Prompts.text(session, "Prompts.text()\n\nEnter some text and I'll say it back.");
-        builder.Prompts.text(session, "What are you looking for: ");
+        builder.Prompts.text(session, "Hey, What are you looking for: ");
     },
-    function (session, results){
+    function (session, results) {
         var SEARCH = results.response;
-        customsearch.cse.list({ cx: CX, q: SEARCH, auth: API_KEY }, function (err, resp) {
+        customsearch.cse.list({
+            cx: CX,
+            q: SEARCH,
+            auth: API_KEY
+        }, function (err, resp) {
             if (err) {
-              return session.send('An error occured', err);
+                return session.send('An error occured', err);
             }
             // Got the response from custom search
             session.send('Result: ' + resp.searchInformation.formattedTotalResults);
             if (resp.items && resp.items.length > 0) {
-                var count =0;
-                while(count<10){
-                session.send('Result name is ' + resp.items[count].title);
-                count ++;
+                var count = 0;
+                while (count < 10) {
+                    try {
+                        var img = resp.items[count].pagemap.cse_image[0].src;
+                        } catch (e) {
+                        console.log("not JSON");
+                    }
+                    var msg = new builder.Message(session)
+                        .textFormat(builder.TextFormat.xml)
+                        .attachments([
+                            new builder.HeroCard(session)
+                            .title(resp.items[count].title)
+                            .text(resp.items[count].snippet)
+                            .subtitle(resp.items[count].formattedUrl)
+                            .images([
+                                builder.CardImage.create(session, img)
+                            ])
+                            .tap(builder.CardAction.openUrl(session, resp.items[count].formattedUrl))
+                        ]);
+                    session.send(msg);
+                    count++;
                 }
-                session.endDialog();
             }
-          });
+        });
     }
 ]).triggerAction({
     matches: /^search|relate|what/i,
