@@ -18,12 +18,14 @@ var connector = useEmulator ? new builder.ChatConnector() : new botbuilder_azure
 if (useEmulator) {
     var restify = require('restify');
     var server = restify.createServer();
-    server.listen(3978, function() {
+    server.listen(3978, function () {
         console.log('test bot endpont at http://localhost:3978/api/messages');
     });
-    server.post('/api/messages', connector.listen());    
+    server.post('/api/messages', connector.listen());
 } else {
-    module.exports = { default: connector.listen() }
+    module.exports = {
+        default: connector.listen()
+    }
 }
 
 // //Create bot
@@ -42,7 +44,7 @@ bot.on('conversationUpdate', function (message) {
                 if (identity.id === message.address.bot.id) {
                     var reply = new builder.Message()
                         .address(message.address)
-                        .text("Hello everyone! I'm Friday. You need help ?");
+                        .text("Hello everyone! I'm Chip. You need help ?");
                     bot.send(reply);
                 }
             });
@@ -90,21 +92,21 @@ bot.beginDialogAction('help', '/help', {
 // Bots Dialogs
 //=========================================================
 bot.dialog('/hello', [
-    
-        function (session,message) {
-            var name = session.message.user.name ;
-            var reply = new builder.Message()
-                .text("Hello %s", name);
-            session.endDialog(reply);
-        }
-    ]).triggerAction({
-        matches: /^Hi|Hey|Hello|helu/i,
-    });
+
+    function (session, message) {
+        var name = message.user ? message.user.name : null;
+        var reply = new builder.Message()
+            .text("Hello %s", name || 'there');
+        session.endDialog(reply);
+    }
+]).triggerAction({
+    matches: /^Hi|Hey|Hello|helu/i,
+});
 bot.dialog('/', [
     function (session) {
         // Send a greeting and show help.
         var card = new builder.HeroCard(session)
-            .title("I'm Friday.")
+            .title("I'm Chip.")
             .text("Nice to meet you - wherever your users are talking.")
             .images([
                 builder.CardImage.create(session, "https://c1.staticflickr.com/5/4435/35800182793_fba2ac8c6f_c.jpg")
@@ -139,16 +141,16 @@ bot.dialog('/search', [
             auth: API_KEY
         }, function (err, resp) {
             if (err) {
-                return session.send('An error occured', err);
+                return session.send("An error occured", err);
             }
             // Got the response from custom search
-            session.send('Result: ' + resp.searchInformation.formattedTotalResults);
+            session.send("Result: " + resp.searchInformation.formattedTotalResults + "for keyword " + SEARCH);
             if (resp.items && resp.items.length > 0) {
                 var count = 0;
                 while (count < 10) {
                     try {
                         var img = resp.items[count].pagemap.cse_image[0].src;
-                        } catch (e) {
+                    } catch (e) {
                         console.log("not JSON");
                     }
                     var msg = new builder.Message(session)
@@ -170,7 +172,7 @@ bot.dialog('/search', [
         });
     }
 ]).triggerAction({
-    matches: /^search|relate|what/i,
+    matches: /^search|looking|find|relate/i,
 });
 bot.dialog('/menu', [
     function (session) {
