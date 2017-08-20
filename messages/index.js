@@ -7,8 +7,8 @@ const CX = '009979358947383324410:mephuvhcu3c';
 const API_KEY = 'AIzaSyClkkoBMsCHG051p9lGgXSa4x8s-pgUhoI';
 const googlehost = 'google.com.vn';
 var path = require('path');
-// var useEmulator = (process.env.NODE_ENV == 'development');
-var useEmulator = true;
+var useEmulator = (process.env.NODE_ENV == 'development');
+// var useEmulator = true;
 
 var connector = useEmulator ? new builder.ChatConnector() : new botbuilder_azure.BotServiceConnector({
     appId: process.env['MicrosoftAppId'],
