@@ -96,7 +96,7 @@ bot.beginDialogAction('help', '/help', {
 bot.dialog('/hello', [
 
     function (session, message) {
-        var name = message.user ? message.user.name : null;
+        var name = session.message.user.name ;
         var reply = new builder.Message()
             .text("Hello %s", name);
         session.endDialog(reply);
