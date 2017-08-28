@@ -222,7 +222,6 @@ function searchMoreFunction(session) {
 //     })
 // }
 bot.dialog('/image', [
-
     function (session, results) {
         session.send("Image for Chip-chan : ");
         fs.readFile('D:/home/site/wwwroot/chip.txt', 'utf-8', function (err, data) {
@@ -241,9 +240,7 @@ bot.dialog('/image', [
     }
 ]).
     triggerAction({
-        matches: /^image|show image/i,
-    }).reloadAction('reloadMenu', null, {
-        matches: /^image again/i
+        matches: /^hi image|image|show image/i,
     });
 bot.dialog('/menu', [
     function (session) {
