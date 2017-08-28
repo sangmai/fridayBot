@@ -225,8 +225,7 @@ bot.dialog('/image', [
 
     function (session, results) {
         session.send("Image for Chip-chan : ");
-        var dataFileName = Environment.GetEnvironmentVariable("HOME").ToString() + "\\site\\wwwroot\\chip.txt";
-        fs.readFile(dataFileName, 'utf-8', function (err, data) {
+        fs.readFile('D:/home/site/wwwroot/chip.txt', 'utf-8', function (err, data) {
             try {
                 var lines = data.split('\n');
                 var msg = new builder.Message(session)
