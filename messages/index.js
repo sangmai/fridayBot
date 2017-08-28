@@ -1,7 +1,7 @@
 "use strict";
-var builder = require("botbuilder");
-var fs = require("fs");
-var botbuilder_azure = require("botbuilder-azure");
+var builder = require('botbuilder');
+var fs = require('fs');
+var botbuilder_azure = require('botbuilder-azure');
 var google = require('googleapis');
 var customsearch = google.customsearch('v1');
 const CX = '009979358947383324410:mephuvhcu3c';
