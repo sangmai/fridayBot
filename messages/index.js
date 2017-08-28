@@ -232,11 +232,11 @@ bot.dialog('/image', [
                     .attachments([{
                         contentType: "image/jpeg",
                         contentUrl: lines[Math.floor(Math.random() * lines.length)]
-                    }])
+                    }]);
                 session.endDialog(msg);
             } catch (err) {
                 console.log(err);
-            };
+            }
         });
     }
 ]).
