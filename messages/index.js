@@ -21,8 +21,8 @@ var listLanguages = {
     },
 };
 var path = require('path');
-// var useEmulator = (process.env.NODE_ENV == 'development');
-var useEmulator = true;
+var useEmulator = (process.env.NODE_ENV == 'development');
+// var useEmulator = true;
 
 var connector = useEmulator ? new builder.ChatConnector() : new botbuilder_azure.BotServiceConnector({
     appId: process.env['MicrosoftAppId'],
