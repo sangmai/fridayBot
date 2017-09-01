@@ -7,9 +7,22 @@ var customsearch = google.customsearch('v1');
 const CX = '009979358947383324410:mephuvhcu3c';
 const API_KEY = 'AIzaSyClkkoBMsCHG051p9lGgXSa4x8s-pgUhoI';
 const googlehost = 'google.com.vn';
+var TJO = require('translate-json-object')();
+var textTranslate;
+var listLanguages = {
+    "English": {
+        item: "en"
+    },
+    "Vietnamese": {
+        item: "vi"
+    },
+    "Japanese": {
+        item: "jv"
+    },
+};
 var path = require('path');
-var useEmulator = (process.env.NODE_ENV == 'development');
-// var useEmulator = true;
+// var useEmulator = (process.env.NODE_ENV == 'development');
+var useEmulator = true;
 
 var connector = useEmulator ? new builder.ChatConnector() : new botbuilder_azure.BotServiceConnector({
     appId: process.env['MicrosoftAppId'],
@@ -34,14 +47,20 @@ if (useEmulator) {
 // //Create bot
 var bot = new builder.UniversalBot(connector);
 bot.localePath(path.join(__dirname, './locale'));
+
 // Add global LUIS recognizer to bot
-var model = process.env.model || 'https://westus.api.cognitive.microsoft.com/luis/v2.0/apps/af8ec9bd-90a8-456a-a2c9-13df500568a9?subscription-key=374dd27c3ff843a0b2ef4167ddd0c149&verbose=true&timezoneOffset=420&q=';
-bot.recognizer(new builder.LuisRecognizer(model));
+// var model = process.env.model || 'https://westus.api.cognitive.microsoft.com/luis/v2.0/apps/af8ec9bd-90a8-456a-a2c9-13df500568a9?subscription-key=374dd27c3ff843a0b2ef4167ddd0c149&verbose=true&timezoneOffset=420&q=';
+// bot.recognizer(new builder.LuisRecognizer(model));
+
+// Init Translate to Json
+TJO.init({
+    /* googleApiKey: 'api_key', */
+    yandexApiKey: 'trnsl.1.1.20170901T150344Z.351974207c47a4d0.a79d274386b9f9219026486dbeb7a76daa5e9c11'
+});
 
 //=========================================================
 // Activity Events
 //=========================================================
-
 bot.on('conversationUpdate', function (message) {
     // Check for group conversations
     if (message.address.conversation.isGroup) {
@@ -154,7 +173,7 @@ bot.dialog('/search', [
 ]).triggerAction({
     matches: /^search|looking|find|relate/i,
 });
-
+//Search API GOOGLE
 function googleSearchAPI(session, results) {
     var ORG_SEARCH = results.response;
     var SEARCH = ORG_SEARCH.replace("@Chip-chan", "");
@@ -181,13 +200,13 @@ function googleSearchAPI(session, results) {
                     .textFormat(builder.TextFormat.xml)
                     .attachments([
                         new builder.HeroCard(session)
-                            .title(resp.items[count].title)
-                            .text(resp.items[count].snippet)
-                            .subtitle(resp.items[count].formattedUrl)
-                            .images([
-                                builder.CardImage.create(session, img)
-                            ])
-                            .tap(builder.CardAction.openUrl(session, resp.items[count].formattedUrl))
+                        .title(resp.items[count].title)
+                        .text(resp.items[count].snippet)
+                        .subtitle(resp.items[count].formattedUrl)
+                        .images([
+                            builder.CardImage.create(session, img)
+                        ])
+                        .tap(builder.CardAction.openUrl(session, resp.items[count].formattedUrl))
                     ]);
                 session.send(msg);
                 count++;
@@ -196,18 +215,18 @@ function googleSearchAPI(session, results) {
         searchMoreFunction(session);
     });
 };
-
+//Search more function
 function searchMoreFunction(session) {
     var msg = new builder.Message(session)
         .text("Do you want to do anything else ?")
         .suggestedActions(
-        builder.SuggestedActions.create(
-            session, [
-                builder.CardAction.imBack(session, "more", "Search More"),
-                builder.CardAction.imBack(session, "image", "Search with Imange"),
-                builder.CardAction.imBack(session, "map", "Search Map")
-            ]
-        ));
+            builder.SuggestedActions.create(
+                session, [
+                    builder.CardAction.imBack(session, "more", "Search More"),
+                    builder.CardAction.imBack(session, "image", "Search with Imange"),
+                    builder.CardAction.imBack(session, "map", "Search Map")
+                ]
+            ));
     builder.Prompts.text(session, msg);
 };
 //Read data from file
@@ -221,6 +240,7 @@ function searchMoreFunction(session) {
 //         }
 //     })
 // }
+//Display image from file
 bot.dialog('/image', [
     function (session, results) {
         session.send("Image for Chip-chan : ");
@@ -239,9 +259,48 @@ bot.dialog('/image', [
         });
     }
 ]).
-    triggerAction({
-        matches: /^hi image|image|show image/i,
-    });
+triggerAction({
+    matches: /^hi image|image|show image/i,
+});
+//Translate using API
+bot.dialog('/translate', [
+    function (session) {
+        session.send("Want Translate ? ");
+        builder.Prompts.text(session, "Let tell me something......");
+
+    },
+    function (session, results) {
+        textTranslate = {
+            "text": results.response
+        };
+        console.log(textTranslate);
+        builder.Prompts.choice(session, "Translate to ?", listLanguages, {
+            listStyle: 3
+        });
+    },
+    function (session, results) {
+        TJO.translate(textTranslate, listLanguages[results.response.entity].item)
+            .then(function (data) {
+                session.endDialog(data);
+            }).catch(function (err) {
+                console.log('error ', err)
+                session.endDialog('Network error');
+            });
+    }
+]).triggerAction({
+    matches: /^hi translate|translate/i,
+});
+
+function translateInput(session, results, textTranslate, lang) {
+    TJO.translate(textTranslate, lang)
+        .then(function (data) {
+            console.log(data);
+            session.endDialog(data);
+        }).catch(function (err) {
+            console.log('error ', err)
+        });
+};
+
 bot.dialog('/menu', [
     function (session) {
         builder.Prompts.choice(session, "What functions would you like to run?", "prompts|picture|cards|list|carousel|receipt|actions|(quit)");
@@ -330,13 +389,13 @@ bot.dialog('/cards', [
             .textFormat(builder.TextFormat.xml)
             .attachments([
                 new builder.HeroCard(session)
-                    .title("Hero Card")
-                    .subtitle("Space Needle")
-                    .text("The <b>Space Needle</b> is an observation tower in Seattle, Washington, a landmark of the Pacific Northwest, and an icon of Seattle.")
-                    .images([
-                        builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Seattlenighttimequeenanne.jpg/320px-Seattlenighttimequeenanne.jpg")
-                    ])
-                    .tap(builder.CardAction.openUrl(session, "https://en.wikipedia.org/wiki/Space_Needle"))
+                .title("Hero Card")
+                .subtitle("Space Needle")
+                .text("The <b>Space Needle</b> is an observation tower in Seattle, Washington, a landmark of the Pacific Northwest, and an icon of Seattle.")
+                .images([
+                    builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Seattlenighttimequeenanne.jpg/320px-Seattlenighttimequeenanne.jpg")
+                ])
+                .tap(builder.CardAction.openUrl(session, "https://en.wikipedia.org/wiki/Space_Needle"))
             ]);
         session.send(msg);
 
@@ -344,16 +403,16 @@ bot.dialog('/cards', [
             .textFormat(builder.TextFormat.xml)
             .attachments([
                 new builder.VideoCard(session)
-                    .title("Video Card")
-                    .subtitle("Microsoft Band")
-                    .text("This is Microsoft Band. For people who want to live healthier and achieve more there is Microsoft Band. Reach your health and fitness goals by tracking your heart rate, exercise, calorie burn, and sleep quality, and be productive with email, text, and calendar alerts on your wrist.")
-                    .image(builder.CardImage.create(session, "https://tse1.mm.bing.net/th?id=OVP.Vffb32d4de3ecaecb56e16cadca8398bb&w=150&h=84&c=7&rs=1&pid=2.1"))
-                    .media([
-                        builder.CardMedia.create(session, "http://video.ch9.ms/ch9/08e5/6a4338c7-8492-4688-998b-43e164d908e5/thenewmicrosoftband2_mid.mp4")
-                    ])
-                    .autoloop(true)
-                    .autostart(false)
-                    .shareable(true)
+                .title("Video Card")
+                .subtitle("Microsoft Band")
+                .text("This is Microsoft Band. For people who want to live healthier and achieve more there is Microsoft Band. Reach your health and fitness goals by tracking your heart rate, exercise, calorie burn, and sleep quality, and be productive with email, text, and calendar alerts on your wrist.")
+                .image(builder.CardImage.create(session, "https://tse1.mm.bing.net/th?id=OVP.Vffb32d4de3ecaecb56e16cadca8398bb&w=150&h=84&c=7&rs=1&pid=2.1"))
+                .media([
+                    builder.CardMedia.create(session, "http://video.ch9.ms/ch9/08e5/6a4338c7-8492-4688-998b-43e164d908e5/thenewmicrosoftband2_mid.mp4")
+                ])
+                .autoloop(true)
+                .autostart(false)
+                .shareable(true)
             ]);
         session.send(msg);
 
@@ -361,13 +420,13 @@ bot.dialog('/cards', [
             .textFormat(builder.TextFormat.xml)
             .attachments([
                 new builder.ThumbnailCard(session)
-                    .title("Thumbnail Card")
-                    .subtitle("Pikes Place Market")
-                    .text("<b>Pike Place Market</b> is a public market overlooking the Elliott Bay waterfront in Seattle, Washington, United States.")
-                    .images([
-                        builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/PikePlaceMarket.jpg/320px-PikePlaceMarket.jpg")
-                    ])
-                    .tap(builder.CardAction.openUrl(session, "https://en.wikipedia.org/wiki/Pike_Place_Market"))
+                .title("Thumbnail Card")
+                .subtitle("Pikes Place Market")
+                .text("<b>Pike Place Market</b> is a public market overlooking the Elliott Bay waterfront in Seattle, Washington, United States.")
+                .images([
+                    builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/PikePlaceMarket.jpg/320px-PikePlaceMarket.jpg")
+                ])
+                .tap(builder.CardAction.openUrl(session, "https://en.wikipedia.org/wiki/Pike_Place_Market"))
             ]);
         session.endDialog(msg);
     }
@@ -381,19 +440,19 @@ bot.dialog('/list', [
             .textFormat(builder.TextFormat.xml)
             .attachments([
                 new builder.HeroCard(session)
-                    .title("Hero Card")
-                    .subtitle("Space Needle")
-                    .text("The <b>Space Needle</b> is an observation tower in Seattle, Washington, a landmark of the Pacific Northwest, and an icon of Seattle.")
-                    .images([
-                        builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Seattlenighttimequeenanne.jpg/320px-Seattlenighttimequeenanne.jpg")
-                    ]),
+                .title("Hero Card")
+                .subtitle("Space Needle")
+                .text("The <b>Space Needle</b> is an observation tower in Seattle, Washington, a landmark of the Pacific Northwest, and an icon of Seattle.")
+                .images([
+                    builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Seattlenighttimequeenanne.jpg/320px-Seattlenighttimequeenanne.jpg")
+                ]),
                 new builder.ThumbnailCard(session)
-                    .title("Thumbnail Card")
-                    .subtitle("Pikes Place Market")
-                    .text("<b>Pike Place Market</b> is a public market overlooking the Elliott Bay waterfront in Seattle, Washington, United States.")
-                    .images([
-                        builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/PikePlaceMarket.jpg/320px-PikePlaceMarket.jpg")
-                    ])
+                .title("Thumbnail Card")
+                .subtitle("Pikes Place Market")
+                .text("<b>Pike Place Market</b> is a public market overlooking the Elliott Bay waterfront in Seattle, Washington, United States.")
+                .images([
+                    builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/PikePlaceMarket.jpg/320px-PikePlaceMarket.jpg")
+                ])
             ]);
         session.endDialog(msg);
     }
@@ -409,38 +468,38 @@ bot.dialog('/carousel', [
             .attachmentLayout(builder.AttachmentLayout.carousel)
             .attachments([
                 new builder.HeroCard(session)
-                    .title("Space Needle")
-                    .text("The <b>Space Needle</b> is an observation tower in Seattle, Washington, a landmark of the Pacific Northwest, and an icon of Seattle.")
-                    .images([
-                        builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Seattlenighttimequeenanne.jpg/320px-Seattlenighttimequeenanne.jpg")
-                            .tap(builder.CardAction.showImage(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Seattlenighttimequeenanne.jpg/800px-Seattlenighttimequeenanne.jpg")),
-                    ])
-                    .buttons([
-                        builder.CardAction.openUrl(session, "https://en.wikipedia.org/wiki/Space_Needle", "Wikipedia"),
-                        builder.CardAction.imBack(session, "select:100", "Select")
-                    ]),
+                .title("Space Needle")
+                .text("The <b>Space Needle</b> is an observation tower in Seattle, Washington, a landmark of the Pacific Northwest, and an icon of Seattle.")
+                .images([
+                    builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Seattlenighttimequeenanne.jpg/320px-Seattlenighttimequeenanne.jpg")
+                    .tap(builder.CardAction.showImage(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Seattlenighttimequeenanne.jpg/800px-Seattlenighttimequeenanne.jpg")),
+                ])
+                .buttons([
+                    builder.CardAction.openUrl(session, "https://en.wikipedia.org/wiki/Space_Needle", "Wikipedia"),
+                    builder.CardAction.imBack(session, "select:100", "Select")
+                ]),
                 new builder.HeroCard(session)
-                    .title("Pikes Place Market")
-                    .text("<b>Pike Place Market</b> is a public market overlooking the Elliott Bay waterfront in Seattle, Washington, United States.")
-                    .images([
-                        builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/PikePlaceMarket.jpg/320px-PikePlaceMarket.jpg")
-                            .tap(builder.CardAction.showImage(session, "https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/PikePlaceMarket.jpg/800px-PikePlaceMarket.jpg")),
-                    ])
-                    .buttons([
-                        builder.CardAction.openUrl(session, "https://en.wikipedia.org/wiki/Pike_Place_Market", "Wikipedia"),
-                        builder.CardAction.imBack(session, "select:101", "Select")
-                    ]),
+                .title("Pikes Place Market")
+                .text("<b>Pike Place Market</b> is a public market overlooking the Elliott Bay waterfront in Seattle, Washington, United States.")
+                .images([
+                    builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/PikePlaceMarket.jpg/320px-PikePlaceMarket.jpg")
+                    .tap(builder.CardAction.showImage(session, "https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/PikePlaceMarket.jpg/800px-PikePlaceMarket.jpg")),
+                ])
+                .buttons([
+                    builder.CardAction.openUrl(session, "https://en.wikipedia.org/wiki/Pike_Place_Market", "Wikipedia"),
+                    builder.CardAction.imBack(session, "select:101", "Select")
+                ]),
                 new builder.HeroCard(session)
-                    .title("EMP Museum")
-                    .text("<b>EMP Musem</b> is a leading-edge nonprofit museum, dedicated to the ideas and risk-taking that fuel contemporary popular culture.")
-                    .images([
-                        builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Night_Exterior_EMP.jpg/320px-Night_Exterior_EMP.jpg")
-                            .tap(builder.CardAction.showImage(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Night_Exterior_EMP.jpg/800px-Night_Exterior_EMP.jpg"))
-                    ])
-                    .buttons([
-                        builder.CardAction.openUrl(session, "https://en.wikipedia.org/wiki/EMP_Museum", "Wikipedia"),
-                        builder.CardAction.imBack(session, "select:102", "Select")
-                    ])
+                .title("EMP Museum")
+                .text("<b>EMP Musem</b> is a leading-edge nonprofit museum, dedicated to the ideas and risk-taking that fuel contemporary popular culture.")
+                .images([
+                    builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Night_Exterior_EMP.jpg/320px-Night_Exterior_EMP.jpg")
+                    .tap(builder.CardAction.showImage(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Night_Exterior_EMP.jpg/800px-Night_Exterior_EMP.jpg"))
+                ])
+                .buttons([
+                    builder.CardAction.openUrl(session, "https://en.wikipedia.org/wiki/EMP_Museum", "Wikipedia"),
+                    builder.CardAction.imBack(session, "select:102", "Select")
+                ])
             ]);
         builder.Prompts.choice(session, msg, "select:100|select:101|select:102");
     },
@@ -475,18 +534,18 @@ bot.dialog('/receipt', [
         var msg = new builder.Message(session)
             .attachments([
                 new builder.ReceiptCard(session)
-                    .title("Recipient's Name")
-                    .items([
-                        builder.ReceiptItem.create(session, "$22.00", "EMP Museum").image(builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/a/a0/Night_Exterior_EMP.jpg")),
-                        builder.ReceiptItem.create(session, "$22.00", "Space Needle").image(builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/7/7c/Seattlenighttimequeenanne.jpg"))
-                    ])
-                    .facts([
-                        builder.Fact.create(session, "1234567898", "Order Number"),
-                        builder.Fact.create(session, "VISA 4076", "Payment Method"),
-                        builder.Fact.create(session, "WILLCALL", "Delivery Method")
-                    ])
-                    .tax("$4.40")
-                    .total("$48.40")
+                .title("Recipient's Name")
+                .items([
+                    builder.ReceiptItem.create(session, "$22.00", "EMP Museum").image(builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/a/a0/Night_Exterior_EMP.jpg")),
+                    builder.ReceiptItem.create(session, "$22.00", "Space Needle").image(builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/7/7c/Seattlenighttimequeenanne.jpg"))
+                ])
+                .facts([
+                    builder.Fact.create(session, "1234567898", "Order Number"),
+                    builder.Fact.create(session, "VISA 4076", "Payment Method"),
+                    builder.Fact.create(session, "WILLCALL", "Delivery Method")
+                ])
+                .tax("$4.40")
+                .total("$48.40")
             ]);
         session.send(msg);
 
@@ -494,18 +553,18 @@ bot.dialog('/receipt', [
         msg = new builder.Message(session)
             .attachments([
                 new builder.ReceiptCard(session)
-                    .title("Recipient's Name")
-                    .items([
-                        builder.ReceiptItem.create(session, "$22.00", "EMP Museum"),
-                        builder.ReceiptItem.create(session, "$22.00", "Space Needle")
-                    ])
-                    .facts([
-                        builder.Fact.create(session, "1234567898", "Order Number"),
-                        builder.Fact.create(session, "VISA 4076", "Payment Method"),
-                        builder.Fact.create(session, "WILLCALL", "Delivery Method")
-                    ])
-                    .tax("$4.40")
-                    .total("$48.40")
+                .title("Recipient's Name")
+                .items([
+                    builder.ReceiptItem.create(session, "$22.00", "EMP Museum"),
+                    builder.ReceiptItem.create(session, "$22.00", "Space Needle")
+                ])
+                .facts([
+                    builder.Fact.create(session, "1234567898", "Order Number"),
+                    builder.Fact.create(session, "VISA 4076", "Payment Method"),
+                    builder.Fact.create(session, "WILLCALL", "Delivery Method")
+                ])
+                .tax("$4.40")
+                .total("$48.40")
             ]);
         session.endDialog(msg);
     }
@@ -517,8 +576,8 @@ bot.dialog('/signin', [
         var msg = new builder.Message(session)
             .attachments([
                 new builder.SigninCard(session)
-                    .text("You must first signin to your account.")
-                    .button("signin", "http://example.com/")
+                .text("You must first signin to your account.")
+                .button("signin", "http://example.com/")
             ]);
         session.endDialog(msg);
     }
@@ -533,15 +592,15 @@ bot.dialog('/actions', [
             .textFormat(builder.TextFormat.xml)
             .attachments([
                 new builder.HeroCard(session)
-                    .title("Hero Card")
-                    .subtitle("Space Needle")
-                    .text("The <b>Space Needle</b> is an observation tower in Seattle, Washington, a landmark of the Pacific Northwest, and an icon of Seattle.")
-                    .images([
-                        builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Seattlenighttimequeenanne.jpg/320px-Seattlenighttimequeenanne.jpg")
-                    ])
-                    .buttons([
-                        builder.CardAction.dialogAction(session, "weather", "Seattle, WA", "Current Weather")
-                    ])
+                .title("Hero Card")
+                .subtitle("Space Needle")
+                .text("The <b>Space Needle</b> is an observation tower in Seattle, Washington, a landmark of the Pacific Northwest, and an icon of Seattle.")
+                .images([
+                    builder.CardImage.create(session, "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Seattlenighttimequeenanne.jpg/320px-Seattlenighttimequeenanne.jpg")
+                ])
+                .buttons([
+                    builder.CardAction.dialogAction(session, "weather", "Seattle, WA", "Current Weather")
+                ])
             ]);
         session.send(msg);
 
