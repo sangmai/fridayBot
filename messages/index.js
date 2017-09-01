@@ -17,7 +17,7 @@ var listLanguages = {
         item: "vi"
     },
     "Japanese": {
-        item: "jv"
+        item: "ja"
     },
 };
 var path = require('path');
