@@ -270,8 +270,10 @@ bot.dialog('/translate', [
 
     },
     function (session, results) {
+        var ORG_TEXT = results.response;
+        var TEXT = ORG_TEXT.replace("@Chip-chan", "");
         textTranslate = {
-            "text": results.response
+            "text": TEXT
         };
         console.log(textTranslate);
         builder.Prompts.choice(session, "Translate to ?", listLanguages, {
